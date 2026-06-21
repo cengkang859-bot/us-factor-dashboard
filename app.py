@@ -405,7 +405,7 @@ if all_factors:
             " 均价 $": f'${raw.get("vwap_v", 0):.2f}',
         })
     df = pd.DataFrame(df_rows)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, use_container_width="stretch", hide_index=True)
 else:
     st.info("No data available")
 
@@ -428,9 +428,9 @@ if all_factors:
                         color_continuous_scale="RdYlGn",
                         aspect="auto",
                         labels={"x": "因子", "y": "股票", "color": "评分"},
-                        title="因子 评分s (0-100)")
+                        title="因子评分 (0-100)")
         fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width="stretch")
 
 # ========== BACKTEST EQUITY CURVE ==========
 st.header("📈 回测权益曲线 (22天)")
@@ -461,7 +461,7 @@ if long_ret or short_ret:
     fig.add_trace(go.Scatter(y=eq_combined, mode='lines', name='多空组合', line=dict(color='blue', width=3)))
     fig.update_layout(height=400, title="投资组合净值 ($10,000起步)",
                      yaxis_title="净值 ($)", xaxis_title="交易次数")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width="stretch")
 
     # Summary stats
     col1, col2, col3, col4 = st.columns(4)
@@ -495,7 +495,7 @@ if long_ret or short_ret:
             rows.append({"股票": t, "交易数": len(rs),
                         "收益": f"{sum(rs)*100:+.1f}%",
                         "胜率": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), use_container_width="stretch", hide_index=True)
 
     st.subheader("By 股票 — Short")
     if short_by_t:
@@ -504,7 +504,7 @@ if long_ret or short_ret:
             rows.append({"股票": t, "交易数": len(rs),
                         "收益": f"{sum(rs)*100:+.1f}%",
                         "胜率": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), use_container_width="stretch", hide_index=True)
 
 # ========== FOOTER ==========
 st.markdown("---")
