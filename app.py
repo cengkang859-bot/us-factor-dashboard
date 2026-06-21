@@ -31,7 +31,7 @@ from plotly.subplots import make_subplots
 
 # ========== PAGE CONFIG ==========
 st.set_page_config(
-    page_title="US Stock Factor Model",
+    page_title="美股因子选股 · 多空系统",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -59,7 +59,7 @@ SHORT_LEVERAGE = {
     "KO": 1.5, "NFLX": 1.5, "PG": 1.5, "UNH": 1.5, "LLY": 1.5, "SPY": 3, "QQQ": 3,
 }
 
-FACTOR_WEIGHTS = {"MOM": 0.30, "RVOL": 0.30, "GAP": 0.10, "VWAP": 0.13, "RSI": 0.05, "TREND": 0.12}
+FACTOR_WEIGHTS = {"动量": 0.30, "量比": 0.30, "缺口": 0.10, "均价": 0.13, "RSI": 0.05, "趋势": 0.12}
 YAHOO_HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}
 
 # ========== DATA ==========
@@ -171,13 +171,13 @@ def compute_all_factors(candles):
     elif rsi14 > 80: rsi_score = 2.0
     else: rsi_score = 4.0
     adx = 20  # Simplified
-    return {"GAP": gap, "MOM": mom_score, "RVOL": rvol, "VWAP": vwap_dist,
-            "RSI": rsi_score, "TREND": adx, "close": cc, "atr": compute_atr(candles, 14),
+    return {"缺口": gap, "动量": mom_score, "量比": rvol, "均价": vwap_dist,
+            "RSI": rsi_score, "趋势": adx, "close": cc, "atr": compute_atr(candles, 14),
             "vwap_v": vwap_v, "rsi_val": rsi14}
 
 def normalize_factors(all_factors):
     pairs = list(all_factors.keys())
-    factor_names = ["MOM", "RVOL", "GAP", "VWAP", "RSI", "TREND"]
+    factor_names = ["动量", "量比", "缺口", "均价", "RSI", "趋势"]
     fv = {f: {} for f in factor_names}
     for p, fac in all_factors.items():
         for f in factor_names:
@@ -189,7 +189,7 @@ def normalize_factors(all_factors):
             vs = list(fv[f].values())
             if len(vs) < 2: nf[f] = 50; continue
             mn, mx = min(vs), max(vs)
-            if f in ["GAP", "VWAP", "MOM"]:
+            if f in ["缺口", "均价", "动量"]:
                 raw = fac.get(f, 0)
                 if mx - mn < 1e-10: nf[f] = 50
                 else:
@@ -214,10 +214,10 @@ def get_signals(all_factors):
     longs = []
     for ticker, score, fac in rankings:
         if score < 30: continue
-        if fac.get('MOM', 0) * max(all_factors[ticker].get('MOM', 0)/abs(all_factors[ticker].get('MOM', 0) or 1), 0) > 0:
+        if fac.get('动量', 0) * max(all_factors[ticker].get('动量', 0)/abs(all_factors[ticker].get('动量', 0) or 1), 0) > 0:
             pass
         raw_fac = all_factors.get(ticker, {})
-        if raw_fac.get('MOM', 0) > 0 and raw_fac.get('VWAP', 0) > -0.003:
+        if raw_fac.get('动量', 0) > 0 and raw_fac.get('均价', 0) > -0.003:
             longs.append((ticker, score, fac))
         if len(longs) >= 3: break
 
@@ -225,7 +225,7 @@ def get_signals(all_factors):
     for ticker, score, fac in reversed(rankings):
         if ticker not in SHORT_TOKENS: continue
         raw_fac = all_factors.get(ticker, {})
-        if raw_fac.get('MOM', 0) < 0 and raw_fac.get('VWAP', 0) < 0:
+        if raw_fac.get('动量', 0) < 0 and raw_fac.get('均价', 0) < 0:
             shorts.append((ticker, score, fac))
         if len(shorts) >= 3: break
 
@@ -266,7 +266,7 @@ def run_backtest():
         for t, sc in rks:
             if sc < 30: continue
             raw = ft.get(t, {})
-            if raw.get('MOM', 0) > 0 and raw.get('VWAP', 0) > -0.003:
+            if raw.get('动量', 0) > 0 and raw.get('均价', 0) > -0.003:
                 lq.append((t, sc))
             if len(lq) >= 3: break
         # SHORT
@@ -274,7 +274,7 @@ def run_backtest():
         for t, sc in reversed(rks):
             if t not in SHORT_TOKENS: continue
             raw = ft.get(t, {})
-            if raw.get('MOM', 0) < 0 and raw.get('VWAP', 0) < 0:
+            if raw.get('动量', 0) < 0 and raw.get('均价', 0) < 0:
                 sq.append((t, sc))
             if len(sq) >= 3: break
 
@@ -302,24 +302,24 @@ def run_backtest():
 
 # ========== UI ==========
 
-st.title("📊 US Stock Factor Model — Long/Short")
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+st.title("📊 美股因子选股 · 多空系统 — Long/Short")
+st.caption(f"最后更新: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
 # Sidebar
-st.sidebar.header("⚙️ Controls")
-refresh = st.sidebar.button("🔄 Refresh Data")
+st.sidebar.header("⚙️ 控制")
+refresh = st.sidebar.button("🔄 刷新数据")
 st.sidebar.markdown("---")
 
 # Market status
 now = datetime.now()
 if now.weekday() >= 5:
-    st.sidebar.warning("🏖️ Weekend — Market Closed")
+    st.sidebar.warning("🏖️ 周末休市")
 elif now.hour < 13 or now.hour > 20:
-    st.sidebar.info("🌙 Outside Market Hours (9:30-16:00 EST)")
+    st.sidebar.info("🌙 非交易时段")
 else:
-    st.sidebar.success("🟢 Market Open")
+    st.sidebar.success("🟢 美股交易中")
 
-st.sidebar.markdown("### Factor Weights")
+st.sidebar.markdown("### 因子权重")
 for f, w in FACTOR_WEIGHTS.items():
     st.sidebar.progress(w, text=f"{f} ({w*100:.0f}%)")
 
@@ -333,14 +333,14 @@ for ticker, candles in data.items():
     if fac: all_factors[ticker] = fac
 
 # ========== MAIN SIGNAL PANEL ==========
-st.header("🎯 Live Signals")
+st.header("🎯 实时信号")
 
 if all_factors:
     rankings, longs, shorts, normalized = get_signals(all_factors)
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📈 LONG (Top 3)")
+        st.subheader("📈 做多信号 (前3)")
         if longs:
             for ticker, score, fac in longs:
                 raw = all_factors.get(ticker, {})
@@ -352,17 +352,17 @@ if all_factors:
                     c1, c2, c3 = st.columns([2, 1, 2])
                     with c1:
                         st.markdown(f"**{ticker}** `{gate}`")
-                        st.caption(f"Score: {score:.0f}")
+                        st.caption(f"评分: {score:.0f}")
                     with c2:
-                        st.metric("Price", f"${px:.2f}")
+                        st.metric("价格", f"${px:.2f}")
                     with c3:
-                        st.metric("SL/TP", f"${sl:.1f} / ${tp:.1f}")
+                        st.metric("止损/止盈", f"${sl:.1f} / ${tp:.1f}")
                     st.progress(score / 100, text="")
         else:
-            st.info("No long signals")
+            st.info("暂无做多信号")
 
     with col2:
-        st.subheader("📉 SHORT (Bottom 3)")
+        st.subheader("📉 做空信号 (后3)")
         if shorts:
             for ticker, score, fac in shorts:
                 raw = all_factors.get(ticker, {})
@@ -375,19 +375,19 @@ if all_factors:
                     c1, c2, c3 = st.columns([2, 1, 2])
                     with c1:
                         st.markdown(f"**{ticker}** `{gate}` x{lev}")
-                        st.caption(f"Score: {score:.0f}")
+                        st.caption(f"评分: {score:.0f}")
                     with c2:
-                        st.metric("Price", f"${px:.2f}")
+                        st.metric("价格", f"${px:.2f}")
                     with c3:
-                        st.metric("SL/TP", f"${sl_up:.1f} / ${tp_dn:.1f}")
+                        st.metric("止损/止盈", f"${sl_up:.1f} / ${tp_dn:.1f}")
                     st.progress(score / 100, text="")
         else:
-            st.info("No short signals")
+            st.info("暂无做空信号")
 else:
     st.error("No data available — Yahoo Finance rate limited. Try again later.")
 
 # ========== FULL RANKINGS ==========
-st.header("📋 Full Rankings")
+st.header("📋 全排行")
 if all_factors:
     df_rows = []
     for ticker, score, fac in rankings:
@@ -397,12 +397,12 @@ if all_factors:
         if any(t == ticker for t, _, _ in longs): long_short = "📈 LONG"
         if any(t == ticker for t, _, _ in shorts): long_short = "📉 SHORT"
         df_rows.append({
-            "Signal": long_short, "Ticker": ticker, "Score": f"{score:.0f}",
-            "Price": f"${px:.2f}", "MOM": f'{fac.get("MOM", 0):.0f}',
-            "RVOL": f'{fac.get("RVOL", 0):.0f}', "GAP": f'{fac.get("GAP", 0):.0f}',
-            "VWAP": f'{fac.get("VWAP", 0):.0f}', "RSI": f'{fac.get("RSI", 0):.0f}',
-            "TREND": f'{fac.get("TREND", 0):.0f}',
-            " VWAP $": f'${raw.get("vwap_v", 0):.2f}',
+            "方向": long_short, "股票": ticker, "评分": f"{score:.0f}",
+            "价格": f"${px:.2f}", "动量": f'{fac.get("动量", 0):.0f}',
+            "量比": f'{fac.get("量比", 0):.0f}', "缺口": f'{fac.get("缺口", 0):.0f}',
+            "均价": f'{fac.get("均价", 0):.0f}', "RSI": f'{fac.get("RSI", 0):.0f}',
+            "趋势": f'{fac.get("趋势", 0):.0f}',
+            " 均价 $": f'${raw.get("vwap_v", 0):.2f}',
         })
     df = pd.DataFrame(df_rows)
     st.dataframe(df, use_container_width=True, hide_index=True)
@@ -410,30 +410,30 @@ else:
     st.info("No data available")
 
 # ========== FACTOR HEATMAP ==========
-st.header("🔥 Factor Heatmap")
+st.header("🔥 因子热力图")
 if all_factors:
     heat_data = []
     for ticker in STOCKS:
         if ticker in all_factors:
             raw = all_factors[ticker]
-            row = {"Ticker": ticker}
+            row = {"股票": ticker}
             for f in FACTOR_WEIGHTS:
                 row[f] = raw.get(f, 50)
             heat_data.append(row)
     if heat_data:
-        heat_df = pd.DataFrame(heat_data).set_index("Ticker")
+        heat_df = pd.DataFrame(heat_data).set_index("股票")
         fig = px.imshow(heat_df.values,
                         x=heat_df.columns,
                         y=heat_df.index,
                         color_continuous_scale="RdYlGn",
                         aspect="auto",
-                        labels={"x": "Factor", "y": "Stock", "color": "Score"},
-                        title="Factor Scores (0-100)")
+                        labels={"x": "因子", "y": "股票", "color": "评分"},
+                        title="因子 评分s (0-100)")
         fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
 
 # ========== BACKTEST EQUITY CURVE ==========
-st.header("📈 Backtest Equity Curve (22-day)")
+st.header("📈 回测权益曲线 (22天)")
 
 with st.spinner("Computing backtest..."):
     long_ret, short_ret, long_by_t, short_by_t = run_backtest()
@@ -456,11 +456,11 @@ if long_ret or short_ret:
         eq_combined.append(eq_combined[-1] * (1 + r / 2))
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(y=eq_long, mode='lines', name='Long Only', line=dict(color='green', width=2)))
-    fig.add_trace(go.Scatter(y=eq_short, mode='lines', name='Short Only', line=dict(color='red', width=2)))
-    fig.add_trace(go.Scatter(y=eq_combined, mode='lines', name='Long+Short', line=dict(color='blue', width=3)))
-    fig.update_layout(height=400, title="Portfolio Equity ($10,000 start)",
-                     yaxis_title="Portfolio Value ($)", xaxis_title="Trade #")
+    fig.add_trace(go.Scatter(y=eq_long, mode='lines', name='仅做多', line=dict(color='green', width=2)))
+    fig.add_trace(go.Scatter(y=eq_short, mode='lines', name='仅做空', line=dict(color='red', width=2)))
+    fig.add_trace(go.Scatter(y=eq_combined, mode='lines', name='多空组合', line=dict(color='blue', width=3)))
+    fig.update_layout(height=400, title="投资组合净值 ($10,000起步)",
+                     yaxis_title="净值 ($)", xaxis_title="交易次数")
     st.plotly_chart(fig, use_container_width=True)
 
     # Summary stats
@@ -479,33 +479,33 @@ if long_ret or short_ret:
     pf_c, tr_c, wr_c, nt_c = stats(combined_all, "Combined")
 
     with col1:
-        st.metric("Long PF", f"{pf_l:.2f}", f"{tr_l:+.1f}%")
+        st.metric("做多盈亏比", f"{pf_l:.2f}", f"{tr_l:+.1f}%")
     with col2:
-        st.metric("Short PF", f"{pf_s:.2f}", f"{tr_s:+.1f}%")
+        st.metric("做空盈亏比", f"{pf_s:.2f}", f"{tr_s:+.1f}%")
     with col3:
-        st.metric("Combined PF", f"{pf_c:.2f}", f"{tr_c:+.1f}%")
+        st.metric("组合盈亏比", f"{pf_c:.2f}", f"{tr_c:+.1f}%")
     with col4:
-        st.metric("Total Trades", f"{nt_l + nt_s}")
+        st.metric("总交易数", f"{nt_l + nt_s}")
 
     # Performance by ticker
-    st.subheader("By Ticker — Long")
+    st.subheader("By 股票 — Long")
     if long_by_t:
         rows = []
         for t, rs in sorted(long_by_t.items(), key=lambda x: sum(x[1]), reverse=True):
-            rows.append({"Ticker": t, "Trades": len(rs),
-                        "Return": f"{sum(rs)*100:+.1f}%",
-                        "Win Rate": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
+            rows.append({"股票": t, "交易数": len(rs),
+                        "收益": f"{sum(rs)*100:+.1f}%",
+                        "胜率": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.subheader("By Ticker — Short")
+    st.subheader("By 股票 — Short")
     if short_by_t:
         rows = []
         for t, rs in sorted(short_by_t.items(), key=lambda x: sum(x[1]), reverse=True):
-            rows.append({"Ticker": t, "Trades": len(rs),
-                        "Return": f"{sum(rs)*100:+.1f}%",
-                        "Win Rate": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
+            rows.append({"股票": t, "交易数": len(rs),
+                        "收益": f"{sum(rs)*100:+.1f}%",
+                        "胜率": f"{len([r for r in rs if r>0])/len(rs)*100:.0f}%"})
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 # ========== FOOTER ==========
 st.markdown("---")
-st.caption("Data: Yahoo Finance | Execution: Gate.io | v3.0 Long/Short Factor Model")
+st.caption("Data: Yahoo Finance | Execution: Gate.io | v3.0 Long/Short 因子 Model")
